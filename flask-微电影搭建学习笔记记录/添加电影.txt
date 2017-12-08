@@ -1,0 +1,72 @@
+添加电影
+
+首先 就是定义一个 forms  MovieForm 
+title
+url
+info
+logo
+star
+tag_id
+area
+release_time
+length 
+这些参数
+这里用到两个 FileFiled and SelectFiled
+FileFiled  就是定义个上次文件的框
+
+SelectFiled 就是定义一个下拉选项框
+coerce=int,  #强制为整型
+choices=[(v.id, v.name) for v in tags], #这里是下拉选项框，v.name  就是在前端显示的值，v.id就是后端接受的值
+
+定义完了  就直接在movie_add 实例化 这个类 然后去前端做好 form表和错误信息的语句
+
+这些都做完 ，就要定义验证函数了
+    if form.validate_on_submit():  
+        data = form.data
+        file_url = secure_filename(form.url.data.filename)  #这里的secure_filename（） 函数是为了保证文件格式的安全，只截取了最后文件名
+        file_logo = secure_filename(form.logo.data.filename)
+        if not os.path.exists(app.config["UP_DIR"]):     #这里的app.config['UP_DIR"]是配置的一个存储文件的路径，如果不存在 就创建一个
+            os.makedirs(app.config["UP_DIR"])    #这里使用makedirs就是可以在多个目录下创建
+            os.chmod(app.config["UP_DIR"], "rw") #改变文件的权限
+        url = change_filename(file_url)          #这里change_filename 就是下面讲的 修改文件名称
+        logo = change_filename(file_logo)
+        form.url.data.save(app.config["UP_DIR"] + url)   #这里就是保存文件 到指定路径
+        form.logo.data.save(app.config["UP_DIR"] + logo)  #保存logo
+        movie = Movie(
+            title=data['title'],      #这里就是提交文件的数据
+            url=url,
+            info=data['info'],
+            logo=logo,
+            star=int(data['star']),    #这里一定记住要强制为整型
+            playnum=0,
+            commentnum=0,
+            tag_id=int(data['tag_id']),
+            area=data['area'],
+            release_time=data['release_time'],
+            length=data['length']
+        )
+        db.session.add(movie)
+        db.session.commit()
+        flash("添加电影成功", "ok")
+        return redirect(url_for("admin.movie_add"))
+
+# 修改文件名称
+def change_filename(filename):    #这里接受一个文件名
+    fileinfo = os.path.splitext(filename)       #分离这个文件名 下面有介绍
+    filename = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + str(uuid.uuid4().hex) + fileinfo[-1]
+    return filename
+
+我们采用文件件名 是时间加上唯一字符的格式   时间使用datatime 唯一 使用uuid  最后加上fileinfo[-1] 格式 -1代表最后一个
+
+分离文件名与扩展名；默认返回(fname,fextension)元组，可做分片操作 
+>>> os.path.splitext('c:\\csv\\test.csv') 
+('c:\\csv\\test', '.csv')
+
+基本就是这样了
+
+
+
+
+
+
+

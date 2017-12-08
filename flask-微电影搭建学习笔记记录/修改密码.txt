@@ -1,0 +1,30 @@
+修改密码
+
+定义一个form PwdForm
+
+有 old_pwd and new_pwd 
+两个PasswrodField
+
+需要验证密码  我们采用了 
+在 PwdForm中定义了 一个方法
+    def validate_old_pwd(self,field):       #开头中带有 validate_ 都会自动验证
+        from flask import session          #从flask中导入session 会话
+        pwd = field.data                   #把field中的数据 赋值给 pwd
+        name = session["admin"]            #调出 session中 
+        admin = Admin.query.filter_by(        #搜索
+            name=name
+        ).first()
+        if not admin.check_pwd(pwd):
+            raise ValidationError("旧密码错误")    #然后 调用admin中的check_pwd方法验证密码
+views.py 中 
+    form = PwdForm()
+    if form.validate_on_submit():
+        data = form.data
+        admin = Admin.query.filter_by(name=session['admin']).first()  #搜索 是否有这个名字
+        from werkzeug.security import generate_password_hash         #导入 哈希算法  
+        admin.pwd = generate_password_hash(data["new_pwd"])         #给新密码 加密
+        db.session.add(admin)                 
+        db.session.commit()
+        flash('修改密码成功,请重新登录！','ok')
+        return redirect(url_for('admin.logout'))
+    return render_template("admin/pwd.html",form=form)

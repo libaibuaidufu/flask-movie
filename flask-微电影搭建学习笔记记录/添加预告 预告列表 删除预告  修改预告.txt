@@ -1,0 +1,44 @@
+添加预告 预告列表 删除预告  修改预告
+
+基本差不多 跟上面  这些还更简单
+
+添加预告 定义form PreviewForm
+
+然后 在前端添加表单 
+
+然后 开始验证 
+    if form.validate_on_submit():
+        data = form.data
+        file_logo = secure_filename(form.logo.data.filename)
+        if not os.path.exists(app.config["UP_DIR"]):
+            os.makedirs(app.config["UP_DIR"])
+            os.chmod(app.config["UP_DIR"], "rw")
+        logo = change_filename(file_logo)
+        form.logo.data.save(app.config["UP_DIR"] + logo)
+        preview = Preview(
+            title=data['title'],
+            logo=logo
+        )
+        db.session.add(preview)
+        db.session.commit()
+        flash("添加预告成功", "ok")
+        return redirect(url_for("admin.preview_add"))
+    return render_template("admin/preview_add.html", form=form)
+
+跟上面差不多
+
+预告列表 
+也就是 搜索所有的预告 然后分页
+
+删除预告 
+定位id 删除
+
+修改预告
+
+跟上面差不多  就是 实例化PreviewForm
+然后 搜索id 
+进行 片名和 次数的判断
+
+然后存储
+
+功能的逻辑 都差不多

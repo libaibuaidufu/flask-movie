@@ -1,0 +1,24 @@
+评论管理
+
+分为 评论列表  删除评论
+
+这个 就不一样  评论列表  有很多关联
+
+    if page is None:
+        page = 1
+    page_data = Comment.query.join(    #这里的join 就是加入了 这个表
+        Movie
+    ).join(
+        User
+    ).filter(
+        Movie.id == Comment.movie_id,  #然后这里进行关联 进行过滤
+        User.id == Comment.user_id
+    ).order_by(
+        Comment.addtime.desc()
+    ).paginate(page=page, per_page=10)
+    return render_template("admin/comment_list.html", page_data=page_data)
+
+删除评论
+
+搜索 id 然后  删除
+

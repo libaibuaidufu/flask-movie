@@ -1,0 +1,71 @@
+上映预告、标签筛选、电影分页
+
+上映预告 后台进行添加 然后这里进行  显示 
+
+    data = Preview.query.all()
+
+搜索 所有数据 进行 首页 循环 
+
+标签筛选
+有点长  我就来解释一下逻辑吧
+    if page is None:
+        page = 1
+    tags = Tag.query.all()   #搜索 所有标记
+    page_data = Movie.query #所有电影
+    # 标签
+    tid = request.args.get('tid', 0)          #从前台获取请求tid的值如果没有就默认为0
+    if int(tid) != 0:            #如果不为0
+        page_data = page_data.filter_by(tag_id=int(tid)) #就搜索 电影中所有标签等于tid的
+    # 星际
+    star = request.args.get('star', 0)          #同理上面 再从  page_data中二次过滤
+    if int(star) != 0:
+        page_data = page_data.filter_by(star=int(star))
+    # 上映时间
+    time = request.args.get('time', 0)
+    if int(time) != 0:           #这里time就是 就是时间从新到旧 从旧到新 的排序
+        if int(time) == 1:
+            page_data = page_data.filter_by(
+                Movie.addtime.desc()
+            )
+        else:
+            page_data = page_data.order_by(
+                Movie.addtime.asc()
+            )
+    # 播放量
+    pm = request.args.get('pm', 0)     #播放量 也是 排序方式
+    if int(pm) != 0:
+        if int(pm) == 1:
+            page_data = page_data.filter_by(
+                Movie.playnum.desc()
+            )
+        else:
+            page_data = page_data.order_by(
+                Movie.playnum.asc()
+            )
+    # 评论量
+    cm = request.args.get('cm', 0) #同理
+    if int(cm) != 0:
+        if int(cm) == 1:
+            page_data = page_data.filter_by(
+                Movie.commentnum.desc()
+            )
+        else:
+            page_data = page_data.order_by(
+                Movie.commentnum.asc()
+            )
+    page_data = page_data.paginate(page=int(page), per_page=10) #这里进行分页
+    p = dict(       
+        tid=tid,
+        star=star,
+        time=time,
+        pm=pm,
+        cm=cm,
+    )
+
+    return render_template('home/index.html', tags=tags, p=p, page_data=page_data)
+
+#上面 p 就是 给链接 加上参数
+href="{{ url_for('home.index',page=1) }}?tid={{ v.id }}&star={{ p['star'] }}&time={{ p['time'] }}&pm={{ p['pm'] }}&cm={{ p['cm'] }}"
+这样显示的更明显 
+
+电影分页  上面也写了

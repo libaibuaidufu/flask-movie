@@ -1,0 +1,19 @@
+会员登录日志
+
+由于我们在 登录时  就记录了 用户的登录日志 这里就是显示
+记录
+userlog = Userlog(
+            user_id=user.id,
+            ip=request.remote_addr,
+        )
+
+然后 显示用户登录日志
+    if page is None:
+        page = 1
+    page_data = Userlog.query.filter(
+        User.id == int(session['user_id']),         #过滤 数据库中User.id 等于 会话中id的所有用户登录日志
+    ).order_by(
+        Userlog.addtime.desc()
+    ).paginate(page=page, per_page=10)
+
+然后就是 进行分页 显示

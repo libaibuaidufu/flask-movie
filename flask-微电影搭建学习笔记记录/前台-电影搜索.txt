@@ -1,0 +1,39 @@
+电影搜索
+
+应该很简单
+
+就是做一个分页
+    if page is None:
+        page = 1
+    key = request.args.get("key", "")        #得到前方 发送的关键词
+    movie_count = Movie.query.filter(       
+        Movie.title.ilike("%" + key + "%")    #然后对Movie进行模糊查询，计数
+    ).count()
+    if page is None:
+        page = 1
+    page_data = Movie.query.filter(
+        Movie.title.ilike("%" + key + "%"),     #这里是模糊查询 
+    ).order_by(
+        Movie.addtime.desc()
+    ).paginate(page=page, per_page=10)
+    page_data.key = key                    #在分页中加上 关键词 这样显示更为准确
+    return render_template('home/search.html', key=key, page_data=page_data, movie_count=movie_count)
+
+<input type="text" class="form-control" placeholder="请输入电影名！" id="key_movie">
+    <span class="input-group-btn">
+       <a class="btn btn-default" id="do_search" ><span class="glyphicon glyphicon-search"></span>&nbsp;搜索</a>
+    </span>
+
+这是form中 的一个 搜索 框
+
+        $("#do_search").click(function () {
+            var key = $("#key_movie").val();
+            location.href= "{{ url_for('home.search',page=1) }}?key=" + key;
+        })
+    });
+
+这是js
+
+当id do_search 被点击时  跳转到 指定链接  
+同时后台获取key的值进行查询
+

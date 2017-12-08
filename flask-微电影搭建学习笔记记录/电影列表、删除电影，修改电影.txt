@@ -1,0 +1,87 @@
+这就是  电影列表 删除电影  修改电影
+
+首先 电影列表
+基本跟上面的tag_list 差不多 
+接受一个page  
+    if page is None:
+        page = 1
+    page_data = Movie.query.join(Tag).filter(
+        Tag.id == Movie.tag_id                 #但是这里使用了一个join方法 加入了一个过滤条件
+    ).order_by(                              #必须Tag.id == Movie.tag_id
+        Movie.addtime.desc()
+    ).paginate(page=page, per_page=10)
+
+删除电影也是简单的删除 后续还有更多要实现
+    movie = Movie.query.get_or_404(int(id))
+    db.session.delete(movie)
+    db.session.commit()
+    flash("删除电影成功", "ok")
+    return redirect(url_for("admin.movie_list", page=1))
+
+查询id  查到了删除
+
+最重要的 修改电影来了
+
+首先 我们还是要实例化form表
+
+然后查询 id 
+如果找到了  就返回form表  把 movie_add 中的 拿来
+定义一边  然后 需要在修改中 给要修改的内容 加上以前的内容提示
+                                {{ form.title(value=movie.title) }}
+例如在form.title中加一个 value=movie.title  
+大部分都可以 显示 但是 有几个无法正常的显示 
+就是url logo star tag 这四个 有两个是文件类的  有来两个的是下拉选择框的
+先讲讲 下拉选择框
+因为 使用上面的value不起作用  我们 就只能在 第一次 get请求时，给他一个
+默认值 
+    movie = Movie.query.get_or_404(int(id))
+    if request.method == "GET":  #如果请求是get
+        form.info.data = movie.info        #给表单中的form.info.data 赋值搜索到的movie.id
+        form.tag_id.data = movie.tag_id
+        form.star.data = movie.star
+这样就可以正常显示了
+
+然后是url 和 logo
+ url 我们就要通过修改js 中的地址来达到定位影片的作用
+	playlist: [{
+                file: "{{ url_for('static',filename='uploads/'+movie.url) }}",  #定位电影url
+                title: "{{ movie.title }}"  #电影名
+            }],	
+
+logo 
+<img src="{{ url_for('static',filename='uploads/'+movie.logo) }}"
+                                     style="margin-top:5px;" class="img-responsive"
+                                     alt="">
+修改展示图片的scr地址 
+这样基本都搞定了 然后就是验证表单了
+这就比较多了
+    form.url.validators=[]    #这里定义为空 下面使用
+    form.logo.validators=[]
+
+        movie_count = Movie.query.filter_by(title=data['title']).count()   #查询传入数据title在表中出现的次数
+        if movie_count == 1 and movie.title != data["title"]: #如果次数等于1同时现在电影名不能等于原来电影名
+            flash("片面已经存在!",'err')   #如果等于  就 是错误  闪现一个 flash
+            return redirect(url_for('admin.movie_edit',id=id))  
+        if not os.path.exists(app.config["UP_DIR"]):    #如果上面电影名过关了 这里就是创建文件夹，判断文件是否存在
+            os.makedirs(app.config["UP_DIR"])
+            os.chmod(app.config["UP_DIR"], "rw")
+
+        if form.url.data.filename != "":              #如果现在不为空了 说明上传了对象 就行保存
+            file_url = secure_filename(form.url.data.filename)
+            movie.url = change_filename(file_url)
+            form.url.data.save(app.config["UP_DIR"] + movie.url)
+
+        if form.logo.data.filename != "":  #同理
+            file_logo = secure_filename(form.logo.data.filename)
+            movie.logo = change_filename(file_logo)
+            form.logo.data.save(app.config["UP_DIR"] + movie.logo)
+
+        movie.star = data['star']
+        movie.tag_id = data['tag_id']
+        movie.info = data['info']
+        movie.title = data['title']
+        movie.area = data['area']
+        movie.length = data['length']
+        movie.release_time = data['release_time']
+
+基本就这样了

@@ -1,0 +1,16 @@
+评论列表
+
+这里的评论分页 就是简单的分页
+    if page is None:
+        page = 1
+    page_data = Comment.query.join(
+        Movie              #加入连个关联表
+    ).join(
+        User
+    ).filter(
+        Movie.id == Comment.movie_id,
+        User.id == session["user_id"] #过滤信息  在会员中心中只显示自己的评论记录
+    ).order_by(
+        Comment.addtime.desc()
+    ).paginate(page=page, per_page=10)
+    return render_template('home/comments.html', page_data=page_data)

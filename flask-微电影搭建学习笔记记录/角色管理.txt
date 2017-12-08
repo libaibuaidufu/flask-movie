@@ -1,0 +1,51 @@
+角色管理
+
+角色添加
+定义 RoleForm表
+    form = RoleForm()
+    if form.validate_on_submit():
+        data = form.data
+        role = Role(
+            name=data['name'],                   #添加 name
+            auths=",".join(map(lambda v: str(v), data['auths']))  #这里用
+        )
+        db.session.add(role)
+        db.session.commit()
+        flash("添加角色成功", 'ok')
+
+",".join(map(lambda v: str(v), data['auths']))
+这里来解释 
+map() 会根据提供的函数对指定序列做映射。
+第一个参数 function 以参数序列中的每一个元素调用 function 函数，
+返回包含每次 function 函数返回值的新列表。
+
+接受一个lambda表达式  接受一个v 转换为 字符串
+data['auths']  我们把他分成一个列表 以逗号分割
+
+然后提交
+
+角色列表
+    if page is None:
+        page = 1
+    page_data = Role.query.order_by(
+        Role.addtime.desc()
+    ).paginate(page=page, per_page=10)
+
+角色删除
+    role = Role.query.filter_by(id=id).first_or_404()
+    db.session.delete(role)
+    db.session.commit()
+    flash('删除角色成功', 'ok')
+
+角色删除
+    form = RoleForm()
+    role = Role.query.get_or_404(id)     #由于auths 列表存储的时候 是以字符串的
+    if request.method == "GET":
+        form.auths.data = list(map(lambda v: int(v), role.auths.split(",")))  #所以修改时，给原始值要改过来
+    if form.validate_on_submit():
+        data = form.data
+        role.name = data['name']
+        role.auths = ",".join(map(lambda v: str(v), data['auths'])) #然后又改回去
+        db.session.add(role)
+        db.session.commit()
+        flash("修改角色成功", 'ok')

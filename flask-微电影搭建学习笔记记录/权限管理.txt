@@ -1,0 +1,46 @@
+权限管理
+
+权限添加
+
+定义form AuthForm 表
+name url submit 这三个
+
+auth_add
+实例化表
+然后在前端部署
+
+然后 就开始 
+    if form.validate_on_submit():
+        data = form.data
+        auth = Auth(
+            name=data['name'],       #利用Auth（）进行添加
+            url=data['url']          #利用 form.url.data =data['url'] 修改
+        )
+        db.session.add(auth)
+        db.session.commit()
+        flash('添加权限成功', 'ok')
+
+然后 权限列表
+    if page is None:
+        page = 1
+    page_data = Auth.query.order_by(         #搜索全部
+        Auth.addtime.desc()
+    ).paginate(page=page, per_page=10)
+
+权限编辑
+    auth = Auth.query.filter_by(id=id).first_or_404()  #搜索id  然后删除
+    db.session.delete(auth)
+    db.session.commit()
+    flash('删除权限成功', 'ok')
+
+权限编辑
+    form = AuthForm()
+    auth = Auth.query.get_or_404(id)       #搜索 此id   
+    if form.validate_on_submit():          #验证
+        data = form.data                
+        auth.url = data['url']              #修改专用 赋值
+        auth.name = data['name']            #然后提交
+        db.session.add(auth)
+        db.session.commit()
+        flash('修改权限成功', 'ok')
+        return redirect(url_for('admin.auth_edit', id=id))

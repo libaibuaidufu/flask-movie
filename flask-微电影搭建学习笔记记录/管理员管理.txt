@@ -1,0 +1,28 @@
+管理员 管理
+
+添加管理
+定义 AdminForm
+    from werkzeug.security import generate_password_hash  #导入哈希密码加密
+    if form.validate_on_submit():
+        data = form.data
+        admin = Admin(                      #添加
+            name=data['name'],
+            pwd=generate_password_hash(data['pwd']), #加密
+            role_id=data['role_id'],
+            is_super=1,        #不是超级管理员 给个默认为1
+        )
+        db.session.add(admin)
+        db.session.commit()
+        flash("添加管理员成功", 'ok')
+
+管理员 列表
+
+    if page is None:
+        page = 1
+    page_data = Admin.query.join(      #加入关联 Role 
+        Role
+    ).filter(
+        Role.id == Admin.role_id     #过滤
+    ).order_by( 
+        Admin.addtime.desc()
+    ).paginate(page=page, per_page=10)

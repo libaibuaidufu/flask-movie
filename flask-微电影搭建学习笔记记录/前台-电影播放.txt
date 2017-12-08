@@ -1,0 +1,57 @@
+电影播放
+
+这里我把电影播放单独拿出来
+
+首先 电影播放 就要把 电影的详情 写出来
+
+所有  就要给一个 id值
+然后
+    movie = Movie.query.join(Tag).filter(   #进行过滤 搜索
+        Tag.id == Movie.tag_id,
+        Movie.id == int(id)
+    ).first_or_404()
+前端要显示
+上映时间  播放数量 评论数量 影片介绍 
+片名 标签  片长 地区  星级
+这些信息
+所以 要进行 详细的过滤
+movie = Movie.query.join(Tag).filter(
+        Tag.id == Movie.tag_id,
+        Movie.id == int(id)          #这里首先 找到 同id 的 电影 和标签
+    ).first_or_404()
+
+    if page is None:
+        page = 1
+    page_data = Comment.query.join(   #这里是评论分页       
+        Movie                         #分页   加入 Movie 和User连个表
+    ).join(
+        User
+    ).filter(
+        Movie.id == movie.id,
+        User.id == Comment.user_id         #过滤同id电影  评论中所有用户id等于评论用户的id
+    ).order_by(                            #这里加入User  好写用户的信息
+        Comment.addtime.desc()
+    ).paginate(page=page, per_page=10)
+
+    form = CommentForm()                      #定义一个 评论表
+    movie.playnum = movie.playnum + 1         #当用户点击进来 加一次播放量
+
+    if "user" in session and form.validate_on_submit():   #如果user 在session中 说明用户登录
+        data = form.data
+        comment = Comment(
+            content=data['content'],          #如果进行 添加评论
+            movie_id=movie.id,
+            user_id=session["user_id"],
+        )
+        db.session.add(comment)
+        db.session.commit()
+        movie.commentnum = movie.commentnum + 1      #提交成功 加一次 评论量
+        db.session.add(movie)                         #在提交
+        db.session.commit()
+        flash("评论成功", "ok")
+        return redirect(url_for("home.play", id=movie.id, page=1))
+    db.session.add(movie) #这里提交播放量
+    db.session.commit()
+
+    return render_template('home/play.html', movie=movie, form=form, page_data=page_data)
+

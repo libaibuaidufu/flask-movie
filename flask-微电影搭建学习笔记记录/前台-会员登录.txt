@@ -1,0 +1,33 @@
+会员登录
+
+定义一个LoginForm表单
+
+name pwd submit
+然后验证 name是否存在 来判断 用户是否存在
+    def validate_name(self, field):
+        name = field.data
+        user = User.query.filter_by(name=name).count()
+        if user == 0:
+            raise ValidationError("帐号不存在")
+
+然后 
+    if form.validate_on_submit():
+        data = form.data
+        user = User.query.filter_by(name=data['name']).first()
+        if not user.check_pwd(data['pwd']):      #验证表单表单 密码  在User中定义了一个check-pwd方法
+            flash("密码错误", 'err')
+            return redirect(url_for("home.login"))
+        session["user"] = user.name         #保存session会话 数据 用户记录用户登录记录
+        session['user_id'] = user.id
+        userlog = Userlog(
+            user_id=user.id,
+            ip=request.remote_addr,
+        )                            #用户登录记录
+        db.session.add(userlog)
+        db.session.commit()
+
+同时 退出 
+logout
+    session.pop('user', None)
+    session.pop('user_id', None)
+去掉会话记录

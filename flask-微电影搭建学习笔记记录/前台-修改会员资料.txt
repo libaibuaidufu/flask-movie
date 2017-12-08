@@ -1,0 +1,47 @@
+修改会员资料
+
+定义一个 UserdetailForm 表
+
+修改的资料有 
+name email phone face info submit
+form = UserdetailForm()
+    user = User.query.get(session["user_id"])         #首先 搜索 会话中保持的user_id
+    form.face.validators = []               
+    if request.method == 'GET':               #如果是get请求
+        form.name.data = user.name          #初始一个name
+        form.email.data = user.email         #email phone info 
+        form.phone.data = user.phone
+        form.info.data = user.info
+    if form.validate_on_submit():
+        data = form.data
+        if not os.path.exists(app.config['FACE_DIR']):      #存储头像的路径 
+            os.makedirs(app.config['FACE_DIR'])          #判断是否存在 好 创建
+            os.chmod(app.config['FACE_DIR'], "rw")
+        file_face = secure_filename(form.face.data.filename)   #更安全的文件名  
+        user.face = change_filename(file_face)            #这个方法是上面定义的 用来修改文件名
+        form.face.data.save(app.config['FACE_DIR'] + user.face)   #然后进行存储
+
+        name_count = User.query.filter_by(name=data['name']).count() #记录修改过后的用户名在数据库中出现的次数
+        if data['name'] != user.name and name_count == 1: #如果用户名修改了，并且数据库中存在 就提示
+            flash("昵称已经存在", 'err')
+            return redirect(url_for('home.user'))
+
+        email_count = User.query.filter_by(email=data['email']).count()  #同理上面
+        if data['email'] != user.email and email_count == 1:
+            flash("邮箱已经存在", 'err')
+            return redirect(url_for('home.user'))
+
+        phone_count = User.query.filter_by(phone=data['phone']).count()
+        if data['phone'] != user.phone and phone_count == 1:
+            flash("手机号已经存在", 'err')
+            return redirect(url_for('home.user'))
+
+        user.name = data['name']         #赋值 修改
+        user.email = data['email']
+        user.phone = data['phone']
+        user.info = data['info']
+        db.session.add(user)
+        db.session.commit()
+        flash('修改成功', 'ok')
+        return redirect(url_for('home.user'))
+    return render_template('home/user.html', form=form, user=user)

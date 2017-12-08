@@ -1,0 +1,80 @@
+这里电影弹幕
+是使用的开源的DPlayer
+
+由于电影弹幕 需要使用redis  所以 就单独 做了一个视图video  
+基本跟play 电影播放 一样 
+
+主要的是
+加上
+
+    {#    <link rel="stylesheet" href="{{ url_for('static',filename="dplayer/dist/DPlayer.min.css") }}">#}
+    <link rel="stylesheet" href="https://cdn.bootcss.com/dplayer/1.17.1/DPlayer.min.css">
+    <script src="{{ url_for("static",filename="flv.js/dist/flv.min.js") }}"></script>
+    <script src="{{ url_for("static",filename="hls.js/dist/hls.min.js") }}"></script>
+    {#    <script src="{{ url_for("static",filename="dplayer/dist/DPlayer.min.js") }}"></script>#}
+    <script src="https://cdn.bootcss.com/dplayer/1.17.1/DPlayer.min.js"></script>
+
+这里加上DPlayer 编译后的 min.css 和 min.js 
+同时还有flv hls ， flv 需要自己编译一下 hls和dbplayer 都是下载好的已经编译过的
+
+    <script>
+        var dp1 = new DPlayer({
+            element: document.getElementById('dplayer1'),
+            video: {
+                url: "{{ url_for("static",filename="uploads/"+movie.url )}}",
+            },
+            danmaku: {
+                id: "{{ movie.id }}",
+                api: "/tm/"
+            }
+        });
+    </script>
+这里是js  电影链接地地址  和 弹幕 api
+    import json
+    if request.method == 'GET':          #如果是get请求 就是  redis中拉下消息队列
+        #获取弹幕消息队列
+        id = request.args.get('id')      #得到电影id
+        key = "movie" + str(id)          #我估计 这里本意是 加入key 来判断 如果key的长度
+        if rd.llen(key):                #如果key的长度 大于零  但是 这里肯定是大于零的 哈哈
+            msgs = rd.lrange(key, 0, 2999) #就取出3000条 
+            res = {
+                "code": 1,
+                "danmaku": [json.loads(v) for v in msgs]  #返回信息  
+            }
+        else:
+            res = {
+                "code": 1,
+                "danmaku": []
+            }
+        resp = json.dumps(res)
+    if request.method == "POST":    #如果请求是post  说明是发送弹幕
+        # 添加弹幕
+        data = json.loads(request.get_data())     #从前端 获取信息
+        msg = {                            #添加一个msg  到redis队列
+            "__v": 0,
+            "author": data["author"],
+            "time": data["time"],
+            "text": data["text"],
+            "color": data["color"],
+            "type": data["type"],
+            "ip": request.remote_addr,
+            "_id": datetime.datetime.now().strftime("%Y%m%d%H%M%S") + uuid.uuid4().hex,
+            "player": [
+                data["player"]
+            ]}
+        res = {
+            "code": 1,
+            "data": msg
+        }
+        resp = json.dumps(res)
+        rd.lpush("movie" + str(data["player"]), json.dumps(msg))#推到reids队列
+    return Response(resp, mimetype="application/json") #响应一个resp，类型是application/json
+这里rd 就是 在配置中实例化FlaskRedis类
+app.config['REDIS_URL'] = "redis://192.168.3.23:6379/0" 
+rd = FlaskRedis(app)
+#这里是连接上本地Redis队列 由于我在学习scrapy时已经安装了Redis 所以这直接使用了
+还是说一下 怎么修改redis.conf
+由于我是用的windows系统 所以修改的是 redis.windows.conf  and redis.windows-service.conf 这两个
+在这两个中bind 127.0.0.1 后面 加上 你的电脑ip  就可以
+类似 bind 127.0.0.1 192.168.3.23 这样就可以 两个都要修改哦 可以通过redis-cli 连接  看是否成功  redis-cli -h 192.168.3.23 测试一下
+

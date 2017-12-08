@@ -1,0 +1,116 @@
+flask 微电影搭建
+首先部署好基本的 工作项目目录  app包
+
+然后 做一个最简单的 flask应用   写好所有要用的数据库models 
+
+然后 建立表 
+
+开始先把前端给部署好，前端需要的方法 都给先做一个最简单  做一个应用  返回一个网页
+
+然后 在开始写后端
+
+后端先开始做了一个admin登录页面  
+
+写一个forms  LoginForm提供表单
+
+    account = StringField(
+        label="帐号",                         #标签
+        validators=[                          #验证函数
+            DataRequired("请输入帐号")        
+        ],
+        description="帐号",                   #描述
+        render_kw={
+            "class": "form-control",          #render_kw  就是传入参数
+            " placeholder": "请输入账号！",   #类似前端的input 中的参数 
+            "required":"required"             #而这里 使用了wtforms提供的表单 所以要加上样式，就是用这个传过去
+        }                                     #required 这个是html5的一个验证   如果什么都没有写就提交，会出一个提示
+    )
+
+    def validate_account(self,field):         #验证密码函数
+        account = field.data                  #输入框中的数据赋值给帐号
+        admin = Admin.query.filter_by(name=account).count() #然后在amdin表中查这个帐号
+        if admin == "0":                      #如果查出来的次数为零
+            raise ValidationError("帐号不存在") #说明这个帐号不存在
+
+#表单写好了 那就是前端了 把表单写入前端
+{{ form.account }}  #表单的帐号框  render_kw 加入了样式
+<span class="glyphicon glyphicon-envelope form-control-feedback"></span>
+{% for err in form.account.errors %}  #如果帐号错误  返回错误信息  密码格式相同
+ <div class="col-md-12">
+    <p class="text-danger">{{ err }}</p>
+</div>
+{% endfor %}
+
+#然后就是 提交  如果现在提交 就会提示 缺少一个 key csrf 跨站密码防御
+这个csrf怎么弄呢
+app.config['SECRET_KEY']="57a9c928-06cf-4550-8d4c-0d7adf8a8250"
+在配置中配置这句话  后面的 乱七八的字符可以 使用
+import uuid
+uuid.uuid4() 生成一个唯一的字符 作为密钥 安全
+
+>>> import os
+>>> os.urandom(24)
+'\xfd{H\xe5<\x95\xf9\xe3\x96.5\xd1\x01O<!\xd5\xa2\xa0\x9fR"\xa1\xa8'
+
+通过文档 发现这也是一种生产密钥的方法
+
+然后就是可以在login.html 中的提交中加上
+                    {{ form.submit }}
+                    {{ form.csrf_token }}
+后面的 csrf_token  就是csrf密钥 这样就可以进行提交操作了
+
+说到这里数据库也需要配置  
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:950916@127.0.0.1:3306/movie'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True #这里的配置是确保一个什么
+这里需要import pymysql  ，python3  需要使用pymysql 链接数据库，
+然后还需要flask-sqlalchemy模块提供的SQLAlchemy 进行实例化
+
+还有注册蓝本
+from app.home import home as home_blueprint
+from app.admin import admin as admin_blueprint
+
+app.register_blueprint(home_blueprint)
+app.register_blueprint(admin_blueprint,url_prefix='/admin')  在app.__init__.py 中注册
+在home，admin各自的__init__.py 进行创建蓝图
+from flask import Blueprint
+
+home  = Blueprint('home',__name__)
+
+from . import views
+蓝图创建格式
+
+
+这些做完后，就要验证提交密码了
+    if form.validate_on_submit():  #验证提交信息，如果正确返回True
+        data = form.data           #表单数据赋值
+	admin = Admin.query.filter_by(name=data['account']).first()  #先搜索admin表中是否有此账户
+        if not admin.check_pwd(data['pwd']):   #然后在使用admin.中的check_pwd进行密码验证，后面讲
+            flash("密码错误")      #如果密码错误返回一个flash信息
+            return redirect(url_for("admin.login"))   #然后重定向到管理员登录界面
+        session["admin"] = data["account"]            #如果密码正确，就使用session[‘admin’]记录下这个会话，
+        return redirect(request.args.get("next") or url_for("admin.index")) #然后重定向到下一个请求或者管理员主页
+
+上面提到的admin.check_pwd 这个方法定义在 models中Admin中，
+由于密码都采用了哈希值加密  所以验证的时候也要调用方法进行验证
+    def check_pwd(self,pwd):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.pwd,pwd)  #如果密码正确返回True
+
+#然后就是退出了 
+session.pop("admin",None)
+记得我们上面保存了session会话吗，现在退出了 就要删除掉，免得会话一直保存，导致不需要密码也能登录
+然后发现 如果直接输入localhost:5000/admin不需要密码也能进入到管理员主页 ，
+这里我们就需要使用一个装饰器  给那些需要管理员登录后才能操作的页面加上，
+from functools import wraps    #这个wraps 可以保存加了装饰器的函数，经过装饰器修饰后还是自己
+def admin_login_req(f):
+    @wraps(f)
+    def decorated_function(*args,**kwargs):#定义方法，接受一个函数作为参数
+        if "admin" not in session:         #如果admin不在会话中
+            return redirect(url_for('admin.login',next=request.url)) #就把它导向登录页面
+        return f(*args,**kwargs) #然后才开始调用被修饰的函数，但是如果上一步就把此函数结束，就不会在进行这一步，从而做到没有登录就无法进行操作
+
+    return decorated_function  #如果登录 就返回
+
+然后使用@admin_login_req
+在每个需要登录才能操作的页面进行修饰
+到这里基本的就结束了

@@ -1,0 +1,28 @@
+# 权限控制装饰器
+#定义一个权限 装饰器
+def admin_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        admin = Admin.query.join(
+            Role                              #加入Role
+        ).filter(
+            Role.id == Admin.role_id,        #定义过滤条件
+            Admin.id == session['admin_id']
+        ).first()
+        auths = admin.role.auths    #赋值  该管理员的权限
+        auths = list(map(lambda v: int(v), auths.split(",")))  #改成整型
+        auth_list = Auth.query.all() #搜索所有的权限
+        urls = [v.url for v in auth_list for val in auths if val == v.id] #遍历权限列表 和管理员权限的数字 如果权限列表和管理员权限的数字相同 说明有这个权限
+        rule = request.url_rule   
+        if str(rule) not in urls: #如果管理员 请求的权限 不在自己的权限内 就返回一个404
+            abort(404)
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+request.url_rule
+#内部规则匹配请求的URL。
+这可用于在URL之前/之后检查方法是否允许(request.url_rule.methods) 等等。
+默认情况下，在处理请求函数中写下 
+
+这里就是我们前面定义 权限的路由 

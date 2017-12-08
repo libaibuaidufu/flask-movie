@@ -1,0 +1,32 @@
+会员注册
+
+首先定义一个RegisterForm 表
+包含
+name email phone pwd repwd submit
+还有三个验证函数  
+注册用户不能有重复名，重复email、phone
+    def validate_name(self, field):
+        name = field.data
+        user = User.query.filter_by(name=name).count()
+        if user == 1:
+            raise ValidationError("昵称已经存在")
+把表单中的数据  在数据库中进行搜索 来去重复
+
+然后就是views  
+    form = RegistForm()
+    if form.validate_on_submit():
+        data = form.data
+        user = User(
+            name=data['name'],
+            email=data["email"],
+            phone=data['phone'],
+            pwd=generate_password_hash(data['pwd']),
+            uuid=uuid.uuid4().hex
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash("注册成功", 'ok')
+        return redirect(url_for("home.login"))
+
+基本都差不多  把从表单中接受到的数据 进行数据库存储
+有一个唯一标识符  密码进行哈希加密
